@@ -6,7 +6,7 @@ import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
 # 1. توكن تليغرام الحقيقي والكامل الخاص ببوتك (تأكد أنه مكتوب كاملاً هنا)
-TELEGRAM_TOKEN = "8961690897:AAEYjqBg6s9wUxdjDInk9__M-kR9ILC9PE"
+TELEGRAM_TOKEN = "8961690897:AAEYjqBg6s97KWeaFQDDZvX1xHM7awZGYZk"
 
 # 2. قراءة مفتاح جيمناي تلقائياً وبأمان من إعدادات السيرفر المخفية
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
