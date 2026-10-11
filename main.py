@@ -6,7 +6,6 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 
 # 🚨 ضع رموزك الرسمية هنا بدقة بين القوسين
 TELEGRAM_TOKEN = "8961690897:AAEYjqBg6s97KWeaFQDDZvX1xHM7awZGYZk"
-"
 GEMINI_API_KEY = "AQ.Ab8RN6K2rPYDk2kdUFPuL5b5gmjnGbsdT6faXVSnVwC24WnWtw"
 
 bot = telebot.TeleBot(TELEGRAM_TOKEN)
