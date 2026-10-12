@@ -49,7 +49,7 @@ def handle_law_queries(message):
             "(الوقائع، المشكلة القانونية، النص القانوني الواجب التطبيق، النتيجة والتعليل والأساس القانوني)."
         )
         response = ai_client.models.generate_content(
-            model='gemini-2.5-flash',
+            model='gemini-3.8-flash',
             
             contents=student_query,
             config=types.GenerateContentConfig(system_instruction=system_instruction, temperature=0.75)
