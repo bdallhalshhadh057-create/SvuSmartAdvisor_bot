@@ -53,7 +53,7 @@ def handle_law_queries(message):
         
         # استدعاء النموذج فلاش السريع والمستقر والمجاني كلياً لعام 2026
         model = genai.GenerativeModel(
-            model_name='gemini-1.5-flash',
+            model_name='gemini-2.5-flash',
             system_instruction=system_instruction
         )
         response = model.generate_content(student_query)
