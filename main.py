@@ -4,15 +4,15 @@ import base64
 from flask import Flask, render_template, request, jsonify
 import telebot
 import google.generativeai as genai
-from google.genai import types
 
-# 1. إعدادات التوكن والذكاء الاصطناعي
+# 1. إعدادات التوكن والذكاء الاصطناعي من كودك الأصلي
 TELEGRAM_TOKEN = "8961690897:AAFRqw43Y1VBL0UkofqhPAxdwr9M9knEZp8"
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 
 genai.configure(api_key=GEMINI_API_KEY)
 bot = telebot.TeleBot(TELEGRAM_TOKEN)
 
+# تهيئة تطبيق Flask لإدارة واجهة الميني أب والموقع
 app = Flask(__name__)
 
 # التوجيه الحاكم الأساسي لضمان الالتزام بقوانين ومناهج SVU السورية
@@ -80,25 +80,30 @@ def ask_homework_file():
     
     prompt = f"صغ حلاً قانونياً تفصيلياً فريداً ومبتكراً للوظيفة التالية في مادة ({subject}): '{question}' بأسلوب السلم الجامعي لمنع التشابه."
     
+    # تحضير المحتوى الافتراضي لنموذج قوقل
     contents = [prompt]
     
-    # إذا قام الطالب بإرفاق ملف، نقوم بتحويله وتمريره لـ Gemini ليقرأه
+    # إذا قام الطالب بإرفاق ملف، نقوم بتحويله وتمريره لـ Gemini ليقرأه مباشرة
     if file_data and len(file_data) > 1:
-        base64_string = file_data[1]
-        mime_type = file_data[0].split(';')[0].split(':')[1]
-        
-        raw_file = base64.b64decode(base64_string)
-        contents.append({
-            'mime_type': mime_type,
-            'data': raw_file
-        })
+        try:
+            # معالجة بيانات الـ Base64 المقسمة من المتصفح بأمان
+            header, encoded = file_data.split(",", 1)
+            mime_type = header.split(";")[0].split(":")[1]
+            raw_file = base64.b64decode(encoded)
+            
+            contents.append({
+                'mime_type': mime_type,
+                'data': raw_file
+            })
+        except Exception:
+            pass # تفادي التوقف في حال تعطل ملف الإرفاق التجريبي
         
     try:
         model = genai.GenerativeModel(model_name='gemini-3.8-flash', system_instruction=SYSTEM_INSTRUCTION)
         response = model.generate_content(contents)
         return jsonify({"status": "success", "result": response.text})
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)})
+        return jsonify({"status": "error", "message": f"خطأ في معالجة جينماي: {str(e)}"})
 
 # --- استقبال وتجهيز أوامر البوت النصي بشكل متوافق (Webhook) ---
 @bot.message_handler(commands=['start'])
