@@ -1,97 +1,175 @@
+
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>مستشار SVU الحقوقي</title>
+    <title>مستشار SVU المتقدم</title>
+    <script src="https://telegram.org"></script>
+    <script src="https://cloudflare.com"></script>
     <style>
-        body { font-family: sans-serif; background-color: #ffffff; padding: 15px; margin: 0; text-align: right; }
+        :root { --bg: #ffffff; --btn: #2481cc; --txt: #000000; }
+        body { font-family: sans-serif; background: var(--bg); color: var(--txt); padding: 15px; margin: 0; }
         .card { background: #f9f9f9; border-radius: 10px; padding: 15px; margin-bottom: 15px; border: 1px solid #e0e0e0; }
-        select, input, button, textarea { width: 100%; padding: 12px; margin-top: 10px; border-radius: 6px; border: 1px solid #ccc; box-sizing: border-box; }
-        button { background-color: #2481cc; color: white; border: none; font-weight: bold; cursor: pointer; }
+        select, input, button, textarea { width: 100%; padding: 12px; margin-top: 10px; border-radius: 6px; border: 1px solid #ccc; box-sizing: border-box; font-size: 14px; }
+        button { background: var(--btn); color: white; border: none; font-weight: bold; cursor: pointer; }
         .hidden { display: none; }
         .badge { background: #e3f2fd; color: #0d47a1; padding: 5px 10px; border-radius: 4px; display: inline-block; font-size: 12px; font-weight: bold; }
+        .opt-btn { background: #fff; color: #333; border: 1px solid #ccc; text-align: right; margin-top: 8px; }
+        .correct { background: #4caf50 !important; color: white !important; }
+        .wrong { background: #f44336 !important; color: white !important; }
+        .exp-box { background: #fffde7; border-left: 4px solid #fbc02d; padding: 10px; margin-top: 10px; font-size: 13px; line-height: 1.5; }
     </style>
 </head>
 <body>
 
-    <!-- شاشة تسجيل الدخول المبسطة -->
+    <!-- بوابة الاشتراك الرقمي -->
     <div id="login-box" class="card">
         <span class="badge">كلية الحقوق - SVU</span>
-        <h3>🔑 تفعيل الاشتراك الرقمي</h3>
+        <h3>🔑 تفعيل المنصة الاحترافية المتقدمة</h3>
         <input type="password" id="pass" placeholder="أدخل كود الاشتراك التجريبي">
-        <button onclick="simpleLogin()">دخول المنصة Direct</button>
+        <button onclick="login()">دخول المنصة</button>
         <p id="err" style="color:red; font-weight:bold;"></p>
-        <hr>
-        <h4>🛒 قيمة الاشتراك: 200,000 ل.س / 100 يوم</h4>
     </div>
 
-    <!-- المنصة الرئيسية -->
+    <!-- المنصة الشجرية التفاعلية -->
     <div id="platform" class="hidden">
         <div class="card">
             <h2>المستشار الأكاديمي الحرفي ⚖️</h2>
-            <label>اختر المقرر الدراسي الحركي:</label>
-            <select id="subject-select">
-                <option value="القانون التجاري">القانون التجاري</option>
-                <option value="القانون المدني">القانون المدني</option>
-                <option value="قانون العقوبات">قانون العقوبات</option>
+            <label>السنة الدراسية:</label>
+            <select id="year-select" onchange="updateSemesters()">
+                <option value="">-- اختر السنة --</option>
+                <option value="1">السنة الأولى</option>
+                <option value="2">السنة الثانية</option>
             </select>
+            <label style="margin-top:10px; display:block;">الفصل الدراسي:</label>
+            <select id="semester-select" onchange="updateSubjects()"><option value="">-- اختر الفصل --</option></select>
+            <label style="margin-top:10px; display:block;">المادة المعتمدة بـ SVU:</label>
+            <select id="subject-select"><option value="">-- اختر المقرر --</option></select>
         </div>
 
         <div class="card">
-            <h3>⚙️ الخدمات الذكية المتاحة</h3>
+            <h3>⚙️ الخدمات والأتمتة الذكية</h3>
             <button onclick="callGemini('summary')">📖 توليد الشرح والتلخيص للمقرر</button>
-            <button style="background-color: #43a047;" onclick="callGemini('quiz')">📝 سؤال أتمتة تجريبي (نمط SVU)</button>
+            <button style="background:#43a047;" onclick="callQuiz()">🎯 بدء اختبار تفاعلي حركي (أزرار خيارات)</button>
         </div>
 
-        <div id="result-card" class="card hidden">
-            <h3 id="result-title">النتيجة:</h3>
-            <div id="gemini-output" style="white-space: pre-wrap; background: #fff; padding: 10px; border: 1px solid #ddd;"></div>
+        <!-- نافذة الشروحات وزر الـ PDF -->
+        <div id="res-card" class="card hidden">
+            <h3 id="res-title">النتيجة:</h3>
+            <div id="out" style="white-space:pre-wrap; background:#fff; padding:15px; border:1px solid #ddd; border-radius:6px; line-height:1.6;"></div>
+            <button id="pdf-btn" style="background:#e53935;" class="hidden" onclick="toPDF()">📥 تحميل هذا التلخيص كملف PDF جاهز</button>
         </div>
 
+        <!-- نافذة الاختبار التفاعلي بالأزرار -->
+        <div id="quiz-card" class="card hidden">
+            <h3 style="color:#2481cc; margin:0;">🎯 سؤال فحص مؤتمت تفاعلي:</h3>
+            <p id="q-text" style="font-weight:bold; margin-top:10px;"></p>
+            <div id="opts-container"></div>
+            <div id="quiz-exp" class="exp-box hidden"></div>
+        </div>
+
+        <!-- صانع حلول الوظائف -->
         <div class="card">
-            <h3>✍️ حل الوظائف الفريدة (منع التشابه)</h3>
-            <textarea id="homework-q" rows="3" placeholder="انسخ نص سؤال الوظيفة هنا..."></textarea>
-            <button style="background-color: #e65100;" onclick="callGemini('homework')">صياغة حل الوظيفة</button>
+            <h3>✍️ صانع حلول الوظائف الفريدة (منع التشابه)</h3>
+            <textarea id="hw-q" rows="3" placeholder="انسخ نص سؤال وظيفة SVU هنا..."></textarea>
+            <button style="background:#e65100;" onclick="callGemini('homework')">صياغة حل وظيفة فريد وعلامة تامة</button>
         </div>
     </div>
 
     <script>
-        function simpleLogin() {
-            const pass = document.getElementById('pass').value;
-            // فحص الكود مباشرة في الواجهة لتفادي مشاكل الاتصال الداخلي بالمتصفح
-            if (pass === "SVU-LAW-99X" || pass === "SVU-VIP-777") {
-                document.getElementById('login-box').classList.add('hidden');
-                document.getElementById('platform').classList.remove('hidden');
-            } else {
-                document.getElementById('err').innerText = "⚠️ كود الاشتراك غير صحيح!";
-            }
+        const svuData = {
+            "1": { "الفصل الأول": ["مدخل إلى علم القانون", "قانون دستوري", "مبادئ علم الاقتصاد"], "الفصل الثاني": ["تاريخ القانون", "القانون الدولي العام", "منظمات دولية"] },
+            "2": { "الفصل الأول": ["قانون عقوبات (عام)", "قانون مدني (مصادر الالتزام)", "قانون تجاري"], "الفصل الثاني": ["قانون عقوبات (خاص)", "قانون إداري", "أحوال شخصية"] }
+        };
+        let correctAns = "";
+
+        function updateSemesters() {
+            const y = document.getElementById('year-select').value;
+            const s = document.getElementById('semester-select');
+            s.innerHTML = '<option value="">-- اختر الفصل --</option>';
+            document.getElementById('subject-select').innerHTML = '<option value="">-- اختر المقرر --</option>';
+            if(y && svuData[y]) Object.keys(svuData[y]).forEach(sem => s.innerHTML += `<option value="${sem}">${sem}</option>`);
         }
 
-        function callGemini(taskType) {
-            const sub = document.getElementById('subject-select').value;
-            const qText = document.getElementById('homework-q').value;
+        function updateSubjects() {
+            const y = document.getElementById('year-select').value;
+            const sem = document.getElementById('semester-select').value;
+            const sub = document.getElementById('subject-select');
+            sub.innerHTML = '<option value="">-- اختر المقرر --</option>';
+            if(y && sem && svuData[y][sem]) svuData[y][sem].forEach(item => sub.innerHTML += `<option value="${item}">${item}</option>`);
+        }
 
-            document.getElementById('result-card').classList.remove('hidden');
-            document.getElementById('result-title').innerText = "⏳ جاري التوليد والمطابقة مع مناهج SVU...";
-            document.getElementById('gemini-output').innerText = "الرجاء الانتظار ثوانٍ معدودة...";
+        function login() {
+            if (document.getElementById('pass').value === "SVU-LAW-99X") {
+                document.getElementById('login-box').classList.add('hidden');
+                document.getElementById('platform').classList.remove('hidden');
+            } else { document.getElementById('err').innerText = "⚠️ كود الاشتراك غير صحيح!"; }
+        }
+
+        function callGemini(type) {
+            const sub = document.getElementById('subject-select').value;
+            const q = document.getElementById('hw-q').value;
+            if(!sub) { alert("يرجى تحديد المادة أولاً!"); return; }
+            if(type==='homework' && !q) { alert("يرجى كتابة نص الوظيفة!"); return; }
+
+            document.getElementById('quiz-card').classList.add('hidden');
+            document.getElementById('res-card').classList.remove('hidden');
+            document.getElementById('pdf-btn').classList.add('hidden');
+            document.getElementById('out').innerText = "⏳ جاري التوليد والمطابقة الأكاديمية مع منهاج SVU...";
 
             fetch('/ask-gemini', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ subject: sub, task_type: taskType, input_text: qText })
+                body: JSON.stringify({ subject: sub, task_type: type, input_text: q })
             }).then(r => r.json()).then(res => {
                 if(res.status === 'success') {
-                    document.getElementById('result-title').innerText = "النتيجة القانونية المعتمدة:";
-                    document.getElementById('gemini-output').innerText = res.result;
-                } else {
-                    document.getElementById('gemini-output').innerText = "خطأ: " + res.message;
+                    document.getElementById('out').innerText = res.result;
+                    if(type === 'summary') document.getElementById('pdf-btn').classList.remove('hidden');
                 }
-            }).catch(err => {
-                document.getElementById('gemini-output').innerText = "فشل الاتصال بالسيرفر، تأكد من إضافة مفتاح جينماي لـ Render.";
             });
+        }
+
+        function callQuiz() {
+            const sub = document.getElementById('subject-select').value;
+            if(!sub) { alert("يرجى تحديد المادة أولاً!"); return; }
+
+            document.getElementById('res-card').classList.add('hidden');
+            document.getElementById('quiz-card').classList.remove('hidden');
+            document.getElementById('quiz-exp').classList.add('hidden');
+            document.getElementById('q-text').innerText = "⏳ جاري صياغة سؤال تفاعلي حركي بالأزرار...";
+            document.getElementById('opts-container').innerHTML = "";
+
+            fetch('/ask-quiz-interactive', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ subject: sub })
+            }).then(r => r.json()).then(res => {
+                if(res.status === 'success') {
+                    const quiz = res.quiz_data;
+                    document.getElementById('q-text').innerText = quiz.question;
+                    correctAns = quiz.correct.trim();
+                    quiz.options.forEach(opt => {
+                        document.getElementById('opts-container').innerHTML += `<button class="opt-btn" onclick="checkAns(this, '${opt}')">${opt}</button>`;
+                    });
+                }
+            });
+        }
+
+        function checkAns(btn, opt) {
+            const btns = document.querySelectorAll('.opt-btn');
+            btns.forEach(b => b.disabled = true);
+            if(opt.trim() === correctAns) { btn.classList.add('correct'); } 
+            else { btn.classList.add('wrong'); btns.forEach(b => { if(b.innerText.trim()===correctAns) b.classList.add('correct'); }); }
+            document.getElementById('quiz-exp').classList.remove('hidden');
+            document.getElementById('quiz-exp').innerHTML = `<b>⚖️ التعليل القانوني السوري (SVU):</b> جاري تحميل التعليل المرجعي الفقهي المتوافق مع سلم تصحيح المادة والتشريعات ذات الصلة.`;
+        }
+
+        function toPDF() {
+            const el = document.getElementById('out');
+            const sub = document.getElementById('subject-select').value;
+            html2pdf().set({ margin: 12, filename: `تلخيص ${sub} - SVU.pdf`, html2canvas: { scale: 2 }, jsPDF: { format: 'a4', orientation: 'portrait' } }).from(el).save();
         }
     </script>
 </body>
 </html>
-
