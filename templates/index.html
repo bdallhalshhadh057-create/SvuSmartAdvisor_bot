@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>مستشار SVU الحقوقي</title>
+    <script src="https://telegram.org"></script>
+    <style>
+        :root {
+            --tg-theme-bg-color: #ffffff;
+            --tg-theme-button-color: #2481cc;
+            --tg-theme-button-text-color: #ffffff;
+            --tg-theme-text-color: #000000;
+        }
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background-color: var(--tg-theme-bg-color); color: var(--tg-theme-text-color); padding: 15px; margin: 0; }
+        .card { background: #f9f9f9; border-radius: 10px; padding: 15px; margin-bottom: 15px; border: 1px solid #e0e0e0; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        select, input, button, textarea { width: 100%; padding: 12px; margin-top: 10px; border-radius: 6px; border: 1px solid #ccc; box-sizing: border-box; font-size: 14px; }
+        button { background-color: var(--tg-theme-button-color); color: var(--tg-theme-button-text-color); border: none; font-weight: bold; cursor: pointer; }
+        .hidden { display: none; }
+        .badge { background: #e3f2fd; color: #0d47a1; padding: 5px 10px; border-radius: 4px; display: inline-block; font-size: 12px; font-weight: bold; }
+        .price-tag { color: #2e7d32; font-weight: bold; font-size: 18px; text-align: center; margin: 10px 0; }
+    </style>
+</head>
+<body>
+
+    <!-- شاشة تسجيل الدخول وبوابة الدفع السورية -->
+    <div id="login-box" class="card">
+        <span class="badge">كلية الحقوق - SVU</span>
+        <h3>🔑 تفعيل الاشتراك الرقمي</h3>
+        <p style="font-size: 13px; color: #666;">يرجى إدخال كود التفعيل الفريد الخاص بك للدخول إلى المنصة المعتمدة.</p>
+        
+        <input type="text" id="user" value="svu_student" readonly>
+        <input type="password" id="pass" placeholder="أدخل كلمة السر الفريدة (كود التفعيل)">
+        <button onclick="login()">دخول المنصة</button>
+        <p id="err" style="color:red; font-weight:bold; font-size:13px;"></p>
+
+        <hr style="margin: 20px 0; border: 0; border-top: 1px dashed #ccc;">
+        
+        <!-- قسم شراء الأكواد -->
+        <h4 style="margin: 0;">🛒 الحصول على كود تفعيل جديد:</h4>
+        <div class="price-tag">قيمة الاشتراك: 200,000 ل.س / 100 يوم</div>
+        <p style="font-size: 13px; color: #555; line-height: 1.6;">
+            يمكنك تحويل قيمة الاشتراك عبر إحدى الطرق التالية داخل سوريا:<br>
+            • <b>سيريتل كاش / إم تي إن كاش</b> إلى الرقم المخصص للمبيعات.<br>
+            • <b>شركة الهرم أو الفؤاد</b> للحساب المعتمد.
+        </p>
+        <p style="font-size: 12px; color: #777;">بعد التحويل، أرسل صورة الإشعار للدعم الفني لتستلم كودك الفريد فوراً.</p>
+    </div>
+
+    <!-- المنصة الرئيسية بعد الدخول بنجاح -->
+    <div id="platform" class="hidden">
+        <div class="card">
+            <span class="badge" id="days-badge">متبقي: -- يوم</span>
+            <h2>المستشار الأكاديمي الحرفي ⚖️</h2>
+            <label>اختر المادة الدراسية الحالية لمطابقتها مع منهاج SVU الرسمي:</label>
+            <select id="subject-select" onchange="resetSections()">
+                <option value="">-- اختر المقرر الدراسي --</option>
+                <option value="القانون التجاري">القانون التجاري</option>
+                <option value="القانون المدني">القانون المدني</option>
+                <option value="قانون العقوبات">قانون العقوبات</option>
+                <option value="أصول المحاكمات">أصول المحاكمات</option>
+            </select>
+        </div>
+
+        <!-- أزرار الخدمات المعتمدة على جينماي -->
+        <div class="card">
+            <h3>⚙️ الخدمات الذكية المتاحة</h3>
+            <button onclick="callGemini('summary')">📖 توليد الشرح والتلخيص الحرفي للمقرر</button>
+            <button style="background-color: #43a047;" onclick="callGemini('quiz')">📝 بدء اختبار مؤتمت تجريبي (نمط فحص SVU)</button>
+        </div>
+
+        <!-- نافذة عرض نتائج الشرح والاختبار -->
+        <div id="result-card" class="card hidden">
+            <h3 id="result-title">النتيجة المستخرجة:</h3>
+            <div id="gemini-output" style="white-space: pre-wrap; background: #fff; padding: 12px; border-radius: 6px; border: 1px solid #ddd; line-height: 1.6;"></div>
+        </div>
+
+        <!-- قسم صياغة الوظائف المنفردة لمنع التشابه -->
+        <div class="card">
+            <h3>✍️ مولد حلول الوظائف الفريدة (علامة تامة)</h3>
+            <p style="font-size: 13px; color: #555;">أدخل نص سؤال وظيفتك التخصيصية لحلها بصياغة قانونية أكاديمية مبتكرة غير متطابقة مع أي طالب آخر لحمايتك من نسبة التشابه الجامعي.</p>
+            <textarea id="homework-q" rows="3" placeholder="انسخ نص سؤال الوظيفة هنا..."></textarea>
+            <button style="background-color: #e65100;" onclick="callGemini('homework')">طلب صياغة الحل الحرفي المانع للتشابه</button>
+        </div>
+    </div>
+
+    <script>
+        Telegram.WebApp.ready();
+        const telegramId = Telegram.WebApp.initDataUnsafe.user ? Telegram.WebApp.initDataUnsafe.user.id : "local_test_user";
+
+        function login() {
+            const user = document.getElementById('user').value;
+            const pass = document.getElementById('pass').value;
+
+            fetch('/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: user, password: pass, telegram_id: telegramId })
+            }).then(r => r.json()).then(res => {
+                if(res.status === 'success') {
+                    document.getElementById('login-box').classList.add('hidden');
+                    document.getElementById('platform').classList.remove('hidden');
+                    document.getElementById('days-badge').innerText = `صلاحية الاشتراك المتبقية: ${res.remaining_days} يوم`;
+                } else {
+                    document.getElementById('err').innerText = res.message;
+                }
+            });
+        }
+
+        function callGemini(taskType) {
+            const sub = document.getElementById('subject-select').value;
+            if(!sub) { alert("يرجى اختيار المادة الدراسية أولاً!"); return; }
+            
+            const qText = document.getElementById('homework-q').value;
+            if(taskType === 'homework' && !qText) { alert("يرجى كتابة نص الوظيفة أولاً!"); return; }
+
+            document.getElementById('result-card').classList.remove('hidden');
+            document.getElementById('result-title').innerText = "⏳ جاري الاستخراج والمطابقة مع المنهاج السوري...";
+            document.getElementById('gemini-output').innerText = "الرجاء الانتظار قليلاً، يقوم الذكاء الاصطناعي بصياغة محتوى دقيق وفريد...";
+
+            fetch('/ask-gemini', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ subject: sub, task_type: taskType, input_text: qText })
+            }).then(r => r.json()).then(res => {
+                if(res.status === 'success') {
+                    if(taskType === 'summary') document.getElementById('result-title').innerText = `📖 التلخيص المعتمد لمادة ${sub}:`;
+                    if(taskType === 'quiz') document.getElementById('result-title').innerText = `📝 سؤال فحص أتمتة تجريبي (${sub}):`;
+                    if(taskType === 'homework') document.getElementById('result-title').innerText = `⚖️ حل الوظيفة المصاغ خصيصاً لك (ممنوع التشابه):`;
+                    
+                    document.getElementById('gemini-output').innerText = res.result;
+                } else {
+                    alert(res.message);
+                }
+            });
+        }
+
+        function resetSections() {
+            document.getElementById('result-card').classList.add('hidden');
+            document.getElementById('homework-q').value = '';
+        }
+    </script>
+</body>
+</html>
