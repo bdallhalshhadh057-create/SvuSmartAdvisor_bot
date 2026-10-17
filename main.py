@@ -1,65 +1,114 @@
 import os
+import json
+import base64
 from flask import Flask, render_template, request, jsonify
 import telebot
 import google.generativeai as genai
+from google.genai import types
 
-# 1. إعدادات التوكن والذكاء الاصطناعي من كودك الأصلي
+# 1. إعدادات التوكن والذكاء الاصطناعي
 TELEGRAM_TOKEN = "8961690897:AAFRqw43Y1VBL0UkofqhPAxdwr9M9knEZp8"
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 
 genai.configure(api_key=GEMINI_API_KEY)
 bot = telebot.TeleBot(TELEGRAM_TOKEN)
 
-# تهيئة تطبيق Flask لإدارة واجهة الميني أب والموقع
 app = Flask(__name__)
 
-# التوجيه الحاكم الأساسي لـ Gemini المتوافق مع مناهج الحقوق بـ SVU والقانون السوري
+# التوجيه الحاكم الأساسي لضمان الالتزام بقوانين ومناهج SVU السورية
 SYSTEM_INSTRUCTION = (
-    "أنت مستشار ومساعد قانوني متخصص في مناهج الحقوق بالجامعة الافتراضية السورية (SVU). "
-    "أجب بدقة متناهية بالاعتماد الحصري على القانون السوري واجتهادات محكمة النقض السورية. "
-    "إذا طلب الطالب حل قضية أو وظيفة (Homework)، صغ الحل بأسلوب تفصيلي وأكاديمي فريد "
-    "وموزع منهجياً: (الوقائع، المشكلة القانونية، النص القانوني الواجب التطبيق, النتيجة والتعليل والأساس القانوني) "
-    "واحرص على أن تكون الصياغة فريدة ومبتكرة غير مكررة لحماية الطالب تماماً من أنظمة كشف التشابه ونيل علامة كاملة."
+    "أنت مستشار ومساعد قانوني أكاديمي متخصص ومحترف في مناهج كلية الحقوق بالجامعة الافتراضية السورية (SVU). "
+    "أجب بدقة متناهية بالاعتماد الحصري والكامل على نصوص التشريعات السورية واجتهادات محكمة النقض السورية المعمول بها. "
+    "عند صياغة حلول الوظائف، احرص على تقديم أسلوب تحليل قانوني رصين ومتميز، مأصل فقهياً وقضائياً، "
+    "وبصياغة فريدة ومبتكرة لكل طالب على حدة لضمان التفوق وحمايته التامة من أنظمة كشف التشابه (Plagiarism) في الجامعة ونيل علامة كاملة."
 )
 
-# --- أقسام وعمليات الـ Mini App (الموقع) ---
 @app.route('/')
 def index():
     return render_template('index.html')
 
+# 1. مسار التلخيص والشرح التقليدي المعتمد
 @app.route('/ask-gemini', methods=['POST'])
 def ask_gemini_web():
     data = request.json
     subject = data.get('subject')
-    task_type = data.get('task_type')
-    input_text = data.get('input_text', '')
-
-    if task_type == "summary":
-        prompt = f"قدم تلخيصاً احترافياً وشرحاً مركزاً لأهم المحاور المتكررة في امتحانات مادة ({subject}) لطلاب الجامعة الافتراضية السورية."
-    elif task_type == "quiz":
-        prompt = f"قم بتوليد سؤال امتحاني مؤتمت واحد (خيارات متعددة) لمادة ({subject}) على نمط فحص SVU، مع 3 خيارات وتحديد الإجابة الصحيحة مع شرح التعليل القانوني السوري السليم."
-    elif task_type == "homework":
-        prompt = f"صغ حلاً قانونياً تفصيلياً فريداً ومبتكراً للوظيفة التالية في مادة ({subject}): '{input_text}' لحمايته من التشابه الجامعي وبأسلوب السلم الجامعي."
-
+    prompt = f"قدم تلخيصاً احترافياً وشرحاً مركزاً لأهم المحاور والفقرات الامتحانية الرسمية المعتمدة في مادة ({subject}) لطلاب الجامعة الافتراضية السورية."
+    
     try:
-        # استخدام الإصدار الأحدث والأقوى والمستقر لعام 2026 لتجنب أخطاء الاتصال
         model = genai.GenerativeModel(model_name='gemini-3.8-flash', system_instruction=SYSTEM_INSTRUCTION)
         response = model.generate_content(prompt)
         return jsonify({"status": "success", "result": response.text})
     except Exception as e:
-        return jsonify({"status": "error", "message": f"خطأ في الاتصال بالذكاء الاصطناعي: {str(e)}"})
+        return jsonify({"status": "error", "message": str(e)})
 
-# --- أقسام وعمليات البوت النصي التقليدي (Telebot) ---
+# 2. مسار الامتحان التفاعلي (يولد بيانات JSON مهيكلة للأزرار)
+@app.route('/ask-quiz-interactive', methods=['POST'])
+def ask_quiz_interactive():
+    data = request.json
+    subject = data.get('subject')
+    
+    # نطلب من جينماي إخراج البيانات بصيغة جيسون محددة جداً لتفهمها أزرار الموقع
+    prompt = (
+        f"قم بتوليد سؤال امتحاني مؤتمت واحد (خيارات متعددة) لمادة ({subject}) على نمط فحص SVU. "
+        "يجب أن تكون الإجابة حصرياً بصيغة كائن JSON باللغة العربية دون أي نصوص إضافية خارج الأقواس، وبالمواصفات التالية:\n"
+        "{\n"
+        '  "question": "نص السؤال هنا",\n'
+        '  "options": ["الخيار الأول", "الخيار الثاني", "الخيار الثالث"],\n'
+        '  "correct": "اكتب هنا الخيار الصحيح حرفياً كما ورد في قائمة الخيارات",\n'
+        '  "explanation": "الشرح والتعليل والأساس القانوني السوري للمادة"\n'
+        "}"
+    )
+    
+    try:
+        model = genai.GenerativeModel(model_name='gemini-3.8-flash', system_instruction=SYSTEM_INSTRUCTION)
+        response = model.generate_content(
+            prompt,
+            generation_config={"response_mime_type": "application/json"} # إجبار جينماي على صياغة JSON نقي
+        )
+        quiz_data = json.loads(response.text)
+        return jsonify({"status": "success", "quiz_data": quiz_data})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)})
+
+# 3. مسار حل الوظائف مع إرفاق وقراءة الملفات (الصور والـ PDF)
+@app.route('/ask-homework-file', methods=['POST'])
+def ask_homework_file():
+    data = request.json
+    subject = data.get('subject')
+    question = data.get('question', '')
+    file_data = data.get('file_data') # مصفوفة الـ Base64 القادمة من المتصفح
+    
+    prompt = f"صغ حلاً قانونياً تفصيلياً فريداً ومبتكراً للوظيفة التالية في مادة ({subject}): '{question}' بأسلوب السلم الجامعي لمنع التشابه."
+    
+    contents = [prompt]
+    
+    # إذا قام الطالب بإرفاق ملف، نقوم بتحويله وتمريره لـ Gemini ليقرأه
+    if file_data and len(file_data) > 1:
+        base64_string = file_data[1]
+        mime_type = file_data[0].split(';')[0].split(':')[1]
+        
+        raw_file = base64.b64decode(base64_string)
+        contents.append({
+            'mime_type': mime_type,
+            'data': raw_file
+        })
+        
+    try:
+        model = genai.GenerativeModel(model_name='gemini-3.8-flash', system_instruction=SYSTEM_INSTRUCTION)
+        response = model.generate_content(contents)
+        return jsonify({"status": "success", "result": response.text})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)})
+
+# --- استقبال وتجهيز أوامر البوت النصي بشكل متوافق (Webhook) ---
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
     welcome_text = (
-        "⚖️ مرحباً بك في مستشار SVU الذكي!\n"
-        "المساعد الافتراضي الأول لطلاب الحقوق في الجامعة الافتراضية السورية.\n\n"
-        "اضغط على زر 'افتح التطبيق' أسفل الشاشة لتجربة المنصة التفاعلية المتكاملة (ملخصات، امتحانات، حل وظائف فريدة)!"
+        "⚖️ مرحباً بك في منصة مستشار SVU الذكي المتقدمة!\n\n"
+        "اضغط على زر 'افتح التطبيق' أسفل الشاشة لتجربة المنصة الشجرية التفاعلية الجديدة (تقسيم السنوات، امتحانات تفاعلية، تحميل ملخصات PDF، وحل وظائف بالملفات المرفقة)!"
     )
     bot.reply_to(message, welcome_text)
 
-# إعداد مسار آمن مخصص لاستقبال رسائل البوت بدون أي تعارض (Webhook Endpoint)
 @app.route('/' + TELEGRAM_TOKEN, methods=['POST'])
 def getMessage():
     json_string = request.get_data().decode('utf-8')
@@ -68,17 +117,10 @@ def getMessage():
     return "!", 200
 
 if __name__ == "__main__":
-    # 1. إزالة أي ويب هوك قديم عالق يسبب التعارض بالخلفية
     bot.remove_webhook()
-    
-    # 2. جلب رابط السيرفر الخارجي تلقائياً وديناميكياً من بيئة Render لتفادي أخطاء الروابط اليدوية
     render_url = os.environ.get("RENDER_EXTERNAL_URL", "https://onrender.com")
-    
-    # 3. ربط الويب هوك بالرابط الصحيح آلياً
     bot.set_webhook(url=render_url + "/" + TELEGRAM_TOKEN)
-    print(f"🔗 [نجاح] تم ربط الويب هوك آلياً على الرابط: {render_url}")
     
-    # 4. تشغيل سيرفر ويب Flask لخدمة الميني أب
     port = int(os.environ.get("PORT", 8080))
     app.run(host="0.0.0.0", port=port)
     
