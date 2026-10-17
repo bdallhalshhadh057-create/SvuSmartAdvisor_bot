@@ -3,25 +3,26 @@ from flask import Flask, render_template, request, jsonify
 import telebot
 import google.generativeai as genai
 
-# إعدادات التوكن والذكاء الاصطناعي
+# 1. إعدادات التوكن والذكاء الاصطناعي من كودك الأصلي
 TELEGRAM_TOKEN = "8961690897:AAFRqw43Y1VBL0UkofqhPAxdwr9M9knEZp8"
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 
 genai.configure(api_key=GEMINI_API_KEY)
 bot = telebot.TeleBot(TELEGRAM_TOKEN)
 
-# تفعيل تطبيق Flask لإدارة واجهة الميني أب
+# تهيئة تطبيق Flask لإدارة واجهة الميني أب والموقع
 app = Flask(__name__)
 
-# التوجيه الحاكم الأساسي لـ Gemini
+# التوجيه الحاكم الأساسي لـ Gemini المتوافق مع مناهج الحقوق بـ SVU والقانون السوري
 SYSTEM_INSTRUCTION = (
     "أنت مستشار ومساعد قانوني متخصص في مناهج الحقوق بالجامعة الافتراضية السورية (SVU). "
     "أجب بدقة متناهية بالاعتماد الحصري على القانون السوري واجتهادات محكمة النقض السورية. "
     "إذا طلب الطالب حل قضية أو وظيفة (Homework)، صغ الحل بأسلوب تفصيلي وأكاديمي فريد "
-    "وموزع منهجياً لمنع أنظمة كشف التشابه ونيل علامة كاملة."
+    "وموزع منهجياً: (الوقائع، المشكلة القانونية، النص القانوني الواجب التطبيق، النتيجة والتعليل والأساس القانوني) "
+    "واحرص على أن تكون الصياغة فريدة ومبتكرة غير مكررة لحماية الطالب تماماً من أنظمة كشف التشابه ونيل علامة كاملة."
 )
 
-# --- مسارات الـ Mini App الواجهة ---
+# --- أقسام وعمليات الـ Mini App (الموقع) ---
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -36,27 +37,28 @@ def ask_gemini_web():
     if task_type == "summary":
         prompt = f"قدم تلخيصاً احترافياً وشرحاً مركزاً لأهم المحاور المتكررة في امتحانات مادة ({subject}) لطلاب الجامعة الافتراضية السورية."
     elif task_type == "quiz":
-        prompt = f"قم بتوليد سؤال امتحاني مؤتمت واحد (خيارات متعددة) لمادة ({subject}) على نمط فحص SVU مع تحديد الإجابة الصحيحة وشرح التعليل القانوني السوري."
+        prompt = f"قم بتوليد سؤال امتحاني مؤتمت واحد (خيارات متعددة) لمادة ({subject}) على نمط فحص SVU، مع 3 خيارات وتحديد الإجابة الصحيحة مع شرح التعليل القانوني السوري السليم."
     elif task_type == "homework":
-        prompt = f"صغ حلاً قانونياً تفصيلياً فريداً ومبتكراً للوظيفة التالية في مادة ({subject}): '{input_text}' لحمايته من التشابه الجامعي."
+        prompt = f"صغ حلاً قانونياً تفصيلياً فريداً ومبتكراً للوظيفة التالية في مادة ({subject}): '{input_text}' لحمايته من التشابه الجامعي وبأسلوب السلم الجامعي."
 
     try:
         model = genai.GenerativeModel(model_name='gemini-2.5-flash', system_instruction=SYSTEM_INSTRUCTION)
         response = model.generate_content(prompt)
         return jsonify({"status": "success", "result": response.text})
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)})
+        return jsonify({"status": "error", "message": f"خطأ في الاتصال بالذكاء الاصطناعي: {str(e)}"})
 
-# --- استقبال وتجهيز أوامر البوت النصي بشكل متوافق ---
+# --- أقسام وعمليات البوت النصي التقليدي (Telebot) ---
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
     welcome_text = (
-        "⚖️ مرحباً بك في مستشار SVU الذكي!\n\n"
+        "⚖️ مرحباً بك في مستشار SVU الذكي!\n"
+        "المساعد الافتراض الأول لطلاب الحقوق في الجامعة الافتراضية السورية.\n\n"
         "اضغط على زر 'افتح التطبيق' أسفل الشاشة لتجربة المنصة التفاعلية المتكاملة (ملخصات، امتحانات، حل وظائف فريدة)!"
     )
     bot.reply_to(message, welcome_text)
 
-# إعداد Webhook مخصص لاستقبال رسائل البوت بأمان بدون تعارض Polling
+# إعداد مسار آمن مخصص لاستقبال رسائل البوت بدون أي تعارض (Webhook Endpoint)
 @app.route('/' + TELEGRAM_TOKEN, methods=['POST'])
 def getMessage():
     json_string = request.get_data().decode('utf-8')
@@ -65,11 +67,17 @@ def getMessage():
     return "!", 200
 
 if __name__ == "__main__":
-    # إعداد وتأكيد اتصال البوت بالسيرفر لتجنب تعارض الـ getUpdates القديم
+    # 1. إزالة أي ويب هوك قديم عالق يسبب التعارض بالخلفية
     bot.remove_webhook()
-    # ضع هنا رابط السيرفر الفعلي الخاص بك المكتوب باللون الأزرق في صورتك
-    bot.set_webhook(url="https://onrender.com" + TELEGRAM_TOKEN)
     
+    # 2. جلب رابط السيرفر الخارجي تلقائياً وديناميكياً من بيئة Render لتفادي أخطاء الروابط اليدوية
+    render_url = os.environ.get("RENDER_EXTERNAL_URL", "https://onrender.com")
+    
+    # 3. ربط الويب هوك بالرابط الصحيح آلياً
+    bot.set_webhook(url=render_url + "/" + TELEGRAM_TOKEN)
+    print(f"🔗 [نجاح] تم ربط الويب هوك آلياً على الرابط: {render_url}")
+    
+    # 4. تشغيل سيرفر ويب Flask لخدمة الميني أب
     port = int(os.environ.get("PORT", 8080))
     app.run(host="0.0.0.0", port=port)
     
