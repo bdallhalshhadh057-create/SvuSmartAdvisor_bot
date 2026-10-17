@@ -42,7 +42,7 @@ def ask_gemini_web():
         prompt = f"صغ حلاً قانونياً تفصيلياً فريداً ومبتكراً للوظيفة التالية في مادة ({subject}): '{input_text}' لحمايته من التشابه الجامعي وبأسلوب السلم الجامعي."
 
     try:
-        model = genai.GenerativeModel(model_name='gemini-2.5-flash', system_instruction=SYSTEM_INSTRUCTION)
+        model = genai.GenerativeModel(model_name='gemini-3.8-flash    , system_instruction=SYSTEM_INSTRUCTION)
         response = model.generate_content(prompt)
         return jsonify({"status": "success", "result": response.text})
     except Exception as e:
